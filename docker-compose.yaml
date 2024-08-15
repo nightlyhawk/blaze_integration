@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  blazegraph:
+    image: lyrasis/blazegraph:2.1.5
+    container_name: blazegraph
+    ports:
+      - "9999:8080"
+    volumes:
+      - blazegraph_data:/var/blazegraph
+
+  django:
+    build: .
+    command: gunicorn app.wsgi:application --bind 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    depends_on:
+      - blazegraph
+    environment:
+      - DEBUG=0
+      - ALLOWED_HOSTS=your_domain_or_ip
+
+volumes:
+  blazegraph_data:
