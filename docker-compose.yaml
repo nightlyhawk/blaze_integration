@@ -15,12 +15,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/code
+      - .:/app
     depends_on:
       - blazegraph
-    environment:
-      - DEBUG=0
-      - ALLOWED_HOSTS=your_domain_or_ip
-
+    env_file:
+      - .env
 volumes:
   blazegraph_data:
