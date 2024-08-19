@@ -26,7 +26,11 @@ SECRET_KEY = os.environ.get("SECRET_KEY", 'defaultsecretkey')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(os.environ.get("DEBUG", default=0))
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
+# Fetch the environment variable with a default value if not set
+allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "")
+
+# Split the environment variable string into a list, default to empty list if None
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition

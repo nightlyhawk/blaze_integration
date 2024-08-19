@@ -11,7 +11,7 @@ services:
 
   django:
     build: .
-    command: gunicorn app.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn blazegraph.wsgi:application --bind 0.0.0.0:8000
     ports:
       - "8000:8000"
     volumes:
@@ -20,5 +20,14 @@ services:
       - blazegraph
     env_file:
       - .env
+      
+  nginx:
+    build: ./nginx
+    image: nginx
+    container_name: "nginx_cont"
+    ports:
+      - 80:80
+    depends_on:
+      - django_app
 volumes:
   blazegraph_data:
