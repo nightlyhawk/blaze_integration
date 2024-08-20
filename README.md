@@ -1,10 +1,10 @@
 # blaze_integration
 ## Overview
 This project provides a way for a ui client to ineract with the blaze server to connect and build databases through django.
-#### BaseUrl
+### BaseUrl
 - url/rdf/
   homepage
-### Endpoints Available**
+### Endpoints Available
   - upload/
     upload ttl files
   - namespace/add/
