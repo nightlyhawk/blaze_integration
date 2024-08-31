@@ -1,33 +1,55 @@
-version: '3'
+version: '3.7'
 
 services:
-  blazegraph:
+  blazegraphs:
     image: lyrasis/blazegraph:2.1.5
-    container_name: blazegraph
+    container_name: blazegraphs
     ports:
-      - "9999:8080"
+      - 9999:8080
     volumes:
-      - blazegraph_data:/var/blazegraph
+      - blazegraph_data:/var/blazegraphs
 
   django:
-    build: .
+    build: 
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: django
     command: gunicorn blazegraph.wsgi:application --bind 0.0.0.0:8000
-    ports:
-      - "8000:8000"
+    expose:
+      - 8000:8000
     volumes:
-      - .:/app
+      - ./app/:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      #- ./certbot/conf:/etc/letsencrypt
+      #- ./certbot/www:/var/www/certbot
     depends_on:
-      - blazegraph
+      - blazegraphs
     env_file:
-      - .env
-      
+      - ./app/.env
+
+
   nginx:
-    build: ./nginx
-    image: nginx
-    container_name: "nginx_cont"
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./conf.d/:/etc/nginx/conf.d/:ro
+      - ./certbot/conf/:/etc/nginx/ssl/:ro
     ports:
       - 80:80
+      - 443:443
     depends_on:
-      - django_app
+      - django
+
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   container_name: certbot
+  #   command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email email --agree-tos --no-eff-email -d localhost
+  #   volumes:
+  #     - ./certbot/conf:/etc/letsencrypt/:rw
+  #     - ./certbot/www:/var/www/certbot/:rw
+    #command: certonly --webroot -w /usr/share/nginx/html/letsencrypt --email email --agree-tos --no-ef-email -d localhost
+    #entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
+
 volumes:
   blazegraph_data:

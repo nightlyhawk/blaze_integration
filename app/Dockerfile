@@ -16,4 +16,9 @@ RUN pip install -r requirements.txt
 # copy project
 COPY . .
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "blazegraph.wsgi:application"]
+ADD entrypoint.sh /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+
