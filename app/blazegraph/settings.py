@@ -124,6 +124,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
+# DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# FILE_UPLOAD_HANDLERS = [
+#           'django.core.files.uploadhandler.MemoryFileUploadHandler',
+#           'django.core.files.uploadhandler.Temporary7FileUploadHandler',
+# ]
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 

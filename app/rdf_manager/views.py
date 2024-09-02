@@ -6,7 +6,7 @@ from .models import UploadedFile
 from .decorators import error_catch
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from .forms import UploadTTLForm
+from .forms import UploadTTLForm, UploadFileForm
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 import os
@@ -17,12 +17,31 @@ import docker
 def homepage(request):
     return HttpResponse("Welcome to the homepage!")
 
+def handle_uploaded_file(f):  
+    with open('myapp/static/upload/'+f.name, 'wb+') as destination:  
+        for chunk in f.chunks():  
+            destination.write(chunk) 
+
 @csrf_exempt
 @error_catch
 def get_files(request):
     files = UploadedFile.objects.all().values('name', 'graph_id', 'size', 'id')
     file_list = list(files)
     return JsonResponse({'files': file_list}, status=200)
+
+@csrf_exempt
+@error_catch
+def upload_file(request):
+    if request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({"message": "success"}, status=200)
+        return JsonResponse({'error': 'Invalid formdata'}, status=400)    
+    # response = HttpResponse("Here's the text of the web page.")
+    # return response
+    else:
+        return JsonResponse({'error': 'Invalid method'}, status=400)   
 
 @csrf_exempt
 @error_catch
@@ -39,7 +58,6 @@ def create_database(request):
             'com.bigdata.rdf.sail.includeInferred': 'true',
             'com.bigdata.rdf.sail.incremental': 'false',
         }
-        print('hereee')
         url = f'{settings.BLAZEGRAPH_URL}{namespace}'
         response = requests.post(url, json={'properties': properties})
 
@@ -53,6 +71,8 @@ def create_database(request):
 @error_catch
 def upload_ttl(request):
     if request.method == 'POST':
+        port = request.POST.get('port')
+        namespace = request.POST.get('namespace')
         form = UploadTTLForm(request.POST, request.FILES)
         if form.is_valid():
             ttl_file = request.FILES['ttl_file']
@@ -60,8 +80,8 @@ def upload_ttl(request):
             graph.parse(ttl_file, format="ttl")
 
             data = graph.serialize(format="nt").decode("utf-8")
-
-            response = requests.post(f"{settings.BLAZEGRAPH_URL}namespace/kb/sparql", 
+        
+            response = requests.post(f"http://localhost:{port}/bigdata/namespace/{namespace}/sparql", 
                                      data=data, 
                                      headers={"Content-Type": "application/x-turtle"})
             if response.status_code == 200:
@@ -80,15 +100,16 @@ def upload_ttl(request):
 @error_catch
 def add_namespace(request):
     if request.method == 'POST':
-        namespace_name = request.POST.get('namespace_name')
-        config = {
-            'com.bigdata.rdf.sail.namespace': namespace_name,
-            'com.bigdata.rdf.store.AbstractTripleStore.textIndex': True,
-            'com.bigdata.rdf.store.AbstractTripleStore.justify': True,
-            'com.bigdata.rdf.store.AbstractTripleStore.quads': True
-        }
+        port = request.POST.get('port')
+        properties = request.POST.get('properties')
+        # config = {
+        #     'com.bigdata.rdf.sail.namespace': namespace_name,
+        #     'com.bigdata.rdf.store.AbstractTripleStore.textIndex': True,
+        #     'com.bigdata.rdf.store.AbstractTripleStore.justify': True,
+        #     'com.bigdata.rdf.store.AbstractTripleStore.quads': True
+        # }
 
-        response = requests.post(f"{settings.BLAZEGRAPH_URL}namespace", data=config)
+        response = requests.post(f"http://blazegraphs:{port}/bigdata/namespace", data=properties)
         if response.status_code == 201:
             return JsonResponse({"message": 'namespace_success'}, status=200)
         else:
@@ -96,6 +117,9 @@ def add_namespace(request):
     response = HttpResponse("Here's the text of the web page.")
     return response
     # return render(request, 'add_namespace.html')
+
+def run_container(name):
+    client.containers.run(name, detach=True)
 
 @csrf_exempt
 @error_catch
@@ -110,7 +134,7 @@ def connect_database(request):
             if not ip_address or not port or not database_type:
                 return JsonResponse({"error": "Missing required fields"}, status=400)
 
-            url = f"http://{ip_address}:{port}/blazegraph/namespace/{database_type}/sparql"
+            url = f"http://{ip_address}:{port}/bigdata/namespace/{database_type}/sparql"
             response = requests.get(url)
 
             if response.status_code == 200:
@@ -121,38 +145,88 @@ def connect_database(request):
             return JsonResponse({"success": False, "message": str(e)}, status=500)
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def readHTMl(status, port):
+    with open("test.html", "w", encoding="utf-8") as file:
+        file.write(status)
+
+    file = open("test.html", "r")
+    lines = file.readlines()
+    newData = []
+    rip = {
+        "basic_information":{
+            "database_type": "Blazegraph",
+            "ip_address": "localhost",
+            "port": {port},
+            "repositories": 1},
+        "additional_information":{}
+        }
+    for line in lines:
+        if "counter-set" in line:
+            newData = lines[lines.index(line) + 1:len(lines) -2]
+    for data in newData:
+        key, value = data.strip().replace("&#47;", "").replace("GeoSpatial", "").replace("</p", "").split("=")
+        rip["additional_information"][key] = value
     
+    return rip
+
+def readData(stat):
+    with open("test.html", "w", encoding="utf-8") as file:
+        file.write(stat)
+
+    file = open("test.html", "r")
+    lines = file.readlines()
+    data = {"title":"", "url":""}
+    datalist = []
+    for line in lines:
+        if "title" in line:
+            k1, k2 = line.split(">", 1)
+            data["title"] = k2.strip().replace("</title>", "")
+        elif "sparqlEndpoint" in line:
+            k1, k2 = line.split("rdf:resource=")
+            data["url"] = k2.strip().replace("/>", "").replace('"', "")
+            datalist.append(data)
+
+    return datalist
+
 @csrf_exempt
 @error_catch
 def get_active_database(request):
     if request.method == 'GET':
+        print("here")
+        data = json.loads(request.body)
+        port = data.get('port')
         try:
-            url = f"{settings.BLAZEGRAPH_URL}namespace"
+            url = f"http://blazegraphs:{port}/bigdata/status"
             response = requests.get(url)
-            data = response.json()
-            active_databases = [namespace for namespace in data if namespace['isDefault']]
-            if active_databases:
-                active_database = active_databases[0]
-                return JsonResponse({'active_database': active_database})
+            info = readHTMl(response.text, port)
+            print(info)
+            if info:
+                return JsonResponse({'active_database': str(info)}, status=200)
             else:
                 return JsonResponse({"message": "No active database found"}, status=404)
         except Exception as e:
-            return JsonResponse({"message": "Failed to fetch active database"}, status=500)
+            return JsonResponse({"message": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 @csrf_exempt
 @error_catch
 def get_active_repository(request):
     if request.method == 'GET':
+        data = json.loads(request.body)
+        port = data.get('port')
         try:
-            url = f"{settings.BLAZEGRAPH_URL}namespace"
+            url = f"http://blazegraphs:{port}/bigdata/namespace"
             response = requests.get(url)
-            print('here', response)
-            data = response.json()
-            active_repositories = [namespace for namespace in data if not namespace['isDefault']]
-            if active_repositories:
-                active_repository = active_repositories[0]
-                return JsonResponse({'active_repository': active_repository})
+            data = response.text
+            info = readData(data)
+            # print('here', response.json())
+            # active_repositories = [namespace for namespace in data if not namespace['isDefault']]
+            # if active_repositories:
+            #     active_repository = active_repositories[0]
+            print(info)
+            if info:
+                return JsonResponse({'active_repository': info}, status=200)
             else:
                 return JsonResponse({"message": "No active repository found"}, status=404)
         except Exception as e:
@@ -169,14 +243,12 @@ def create_container(port, path, min, max, name):
                           environment=[f"JAVA_OPTS= -Xms{min} -Xmx{max}"],
                           name= f"blazegraph_{name}",
                           volumes={
-                                'blazegraph_data': {
-                                    'bind': f'/var/{path}', 
+                                {path}: {
+                                    'bind': f'/data', 
                                     'mode': 'rw'
                                 }
                             }
                         )
-def run_container(name):
-    client.containers.run(name, detach=True)
 
 def stop_container(name):
     container = client.containers.get(name)
@@ -213,7 +285,7 @@ def createActualDB(request):
                 ports:
                 - {data.get('port')}:8080
                 volumes:
-                - blazegraph_data:{data.get('installationPath')}
+                - {data.get('installationPath')}:/data
         """
         with open("docker-compose.yaml", "w") as f:
             f.write(compose_content)
@@ -239,6 +311,19 @@ def destroyDB(request):
         return JsonResponse({"message": "removed successfully"}, status=200)
     else:
         return JsonResponse({"error": "Invalid method"}, status=400)
+
+@csrf_exempt
+@error_catch
+def testWithin(request):
+    if request.method == "GET":
+        data = json.loads(request.body)
+        url = f"http://localhost:8080/blazegraph/namespace/blazegraph/sparql"
+        response = requests.get(url)
+
+    if response.status_code == 200:
+        return JsonResponse({"success": True, "message": "Connected successfully"}, status=200)
+    else:
+        return JsonResponse({"success": False, "message": "Failed to connect"}, status=response.status_code)
 
 @csrf_exempt
 @error_catch
@@ -273,3 +358,4 @@ def retrieveDBcontainers(request):
         return JsonResponse({"data": containers_info}, status=200, safe=False)
     else:
         return JsonResponse({"error": "Invalid method"}, status=400)
+
