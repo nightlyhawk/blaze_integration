@@ -81,7 +81,7 @@ def upload_ttl(request):
 
             data = graph.serialize(format="nt").decode("utf-8")
         
-            response = requests.post(f"http://localhost:{port}/bigdata/namespace/{namespace}/sparql", 
+            response = requests.post(f"http://blazegraphs_{namespace}:{port}/bigdata/namespace/{namespace}/sparql", 
                                      data=data, 
                                      headers={"Content-Type": "application/x-turtle"})
             if response.status_code == 200:
@@ -101,6 +101,7 @@ def upload_ttl(request):
 def add_namespace(request):
     if request.method == 'POST':
         port = request.POST.get('port')
+        name = request.POST.get('namespace')
         properties = request.POST.get('properties')
         # config = {
         #     'com.bigdata.rdf.sail.namespace': namespace_name,
@@ -109,7 +110,7 @@ def add_namespace(request):
         #     'com.bigdata.rdf.store.AbstractTripleStore.quads': True
         # }
 
-        response = requests.post(f"http://blazegraphs:{port}/bigdata/namespace", data=properties)
+        response = requests.post(f"http://blazegraph_{name}:{port}/bigdata/namespace", data=properties)
         if response.status_code == 201:
             return JsonResponse({"message": 'namespace_success'}, status=200)
         else:
@@ -196,8 +197,9 @@ def get_active_database(request):
         print("here")
         data = json.loads(request.body)
         port = data.get('port')
+        name = data.get('namespace')
         try:
-            url = f"http://blazegraphs:{port}/bigdata/status"
+            url = f"http://blazegraph_{name}:{port}/bigdata/status"
             response = requests.get(url)
             info = readHTMl(response.text, port)
             print(info)
@@ -215,8 +217,9 @@ def get_active_repository(request):
     if request.method == 'GET':
         data = json.loads(request.body)
         port = data.get('port')
+        name = data.get('namespace')
         try:
-            url = f"http://blazegraphs:{port}/bigdata/namespace"
+            url = f"http://blazegraph_{name}:{port}/bigdata/namespace"
             response = requests.get(url)
             data = response.text
             info = readData(data)
@@ -317,7 +320,8 @@ def destroyDB(request):
 def testWithin(request):
     if request.method == "GET":
         data = json.loads(request.body)
-        url = f"http://localhost:8080/blazegraph/namespace/blazegraph/sparql"
+        name = data.get('namespace')
+        url = f"http://blazegraph_{name}:8080/blazegraph/namespace/blazegraph/sparql"
         response = requests.get(url)
 
     if response.status_code == 200:

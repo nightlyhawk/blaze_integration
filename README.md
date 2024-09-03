@@ -6,25 +6,56 @@ This project provides a way for a ui client to ineract with the blaze server to 
   homepage
 ### Endpoints Available
   - get_files/
-    retrieve uploaded files
+      method: GET
+      body: None
+      response: {[files], status=200}
+      description: retrieve uploaded files
   - upload_file/
-    upload file
-  - upload/
-    upload ttl files
+      method: POST
+      body: {name: "", graph_id: "", size: "", file: ""}
+      response: {message: success, status=200}
+      description: upload file
+  - upload_ttl/
+      method: POST
+      body: {ttl_file: ""}
+      response: {message: success, status=200}
+      description: upload ttl files
   - namespace/add/
-    create or add a namespace 
+      method: POST
+      body: {port: "", namespace: "", properties: ""}
+      response: {message: namespace_success, status=201}
+      description: create or add a namespace 
   - connect_database/
-    connect to a database
+      connect to a database
   - db_create/
-    create a database
+      method: POST
+      body: {port: "", installationPath: "", minMemory: "", maxMemory: "", name_space: ""}
+      response: {message: created successfully, status=201}
+      description: create a database
   - db_logs/
-    view database logs
+      method: GET
+      body: {name: "name_space"}
+      response: {data: [], status=200}
+      description: view database logs
   - db_containers/
-    view running containers
+      method: GET
+      body: None
+      response: {data: [], status=200}
+      description: view running containers
   - db_destroy/
-    delete database by path
+      method: POST
+      body: {name: "name_space"}
+      response: {data: removed successfully, status=200}
+      description: delete database by path
   - active-database/
-    retrieve active databases
+      method: GET
+      body: {port: "", namespace: ""}
+      response: {active_database: {}, status=200}
+      description: retrieve active databases
   - active-repository/
-    retrieve active repositories
+      method: GET
+      body: {port: "", namespace: ""}
+      response: {active_repository: {}, status=200}
+      description: retrieve active repositories
+  
 
