@@ -5,7 +5,7 @@ This project provides a way for a ui client to ineract with the blaze server to 
 - url/rdf/
   homepage
 ### Endpoints Available
-  - get_files/
+  - get_files/<br />
       method: GET
       body: None
       response: {[files], status=200}
